@@ -62,11 +62,14 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Create frontend dist placeholder
+    - name: Build frontend assets
       shell: bash
       run: |
-        mkdir -p www/dist
-        echo "placeholder" > www/dist/.placeholder.txt
+        if [ -d "www" ] && [ -f "www/package.json" ]; then
+          cd www
+          pnpm install
+          pnpm run build
+        fi
 
     - name: Download Go dependencies
       shell: bash
