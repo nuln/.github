@@ -1,0 +1,36 @@
+name: Abyss Core Dependency Scan
+description: Run vulnerability checks for abyss-core
+
+inputs:
+  go-version:
+    description: Go toolchain version
+    required: false
+    default: "1.26"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Restore Go module cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-mod-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-mod-${{ inputs.go-version }}-
+
+    - name: Download Go dependencies
+      shell: bash
+      run: go mod tidy
+
+    - name: Run vulnerability check
+      shell: bash
+      run: make vulnerability-check

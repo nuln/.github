@@ -1,0 +1,61 @@
+name: Abyss Core Assets Release
+description: Build and publish core release assets
+
+inputs:
+  go-version:
+    description: Go toolchain version
+    required: false
+    default: "1.26"
+  node-version:
+    description: Node.js version
+    required: false
+    default: "24"
+  pnpm-version:
+    description: pnpm version
+    required: false
+    default: "10"
+  release-tag:
+    description: Release tag name (e.g. v1.0.0)
+    required: true
+  repo-token:
+    description: GitHub token for pushing assets (use secrets.GITHUB_TOKEN)
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ inputs.repo-token }}
+
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Set remote URL with token
+      shell: bash
+      run: git remote set-url origin "https://x-access-token:${{ inputs.repo-token }}@github.com/${{ github.repository }}.git"
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Release Assets
+      shell: bash
+      run: make release-assets TAG=${{ inputs.release-tag }}

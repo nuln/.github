@@ -1,0 +1,78 @@
+name: Abyss Core CI
+description: Run lint and unit tests for abyss-core
+
+inputs:
+  go-version:
+    description: Go toolchain version
+    required: false
+    default: "1.26"
+  node-version:
+    description: Node.js version
+    required: false
+    default: "24"
+  pnpm-version:
+    description: pnpm version
+    required: false
+    default: "10"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Restore Go module cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-mod-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-mod-${{ inputs.go-version }}-
+
+    - name: Restore golangci-lint binary cache
+      id: golangci-bin-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/bin/golangci-lint
+        key: ${{ runner.os }}-golangci-bin-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-golangci-bin-
+
+    - name: Restore golangci-lint analysis cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/golangci-lint
+        key: ${{ runner.os }}-golangci-cache-${{ hashFiles('**/.golangci.yml', '**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-golangci-cache-
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Download Go dependencies
+      shell: bash
+      run: |
+        go mod download
+        go mod tidy
+
+    - name: Install golangci-lint
+      if: steps.golangci-bin-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+    - name: Run CI
+      shell: bash
+      run: make ci SETUP_TOOLS=false
