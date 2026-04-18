@@ -8,37 +8,50 @@ inputs:
     default: "1.26"
   app-id:
     description: GitHub App ID for private dependency access
-    required: true
+    required: false
+    default: ""
   app-private-key:
     description: GitHub App private key for private dependency access
-    required: true
+    required: false
+    default: ""
 
 runs:
   using: composite
   steps:
     - name: Generate token
       id: token
+      if: ${{ inputs.app-id != '' && inputs.app-private-key != '' }}
       uses: actions/create-github-app-token@v2
       with:
         app-id: ${{ inputs.app-id }}
         private-key: ${{ inputs.app-private-key }}
         owner: ${{ github.repository_owner }}
 
+    - name: Resolve auth token
+      id: auth
+      shell: bash
+      run: |
+        token='${{ steps.token.outputs.token }}'
+        if [ -z "$token" ]; then
+          token='${{ github.token }}'
+        fi
+        echo "token=$token" >> "$GITHUB_OUTPUT"
+
     - name: Checkout plugin
       uses: actions/checkout@v4
       with:
-        token: ${{ steps.token.outputs.token }}
+        token: ${{ steps.auth.outputs.token }}
 
     - name: Checkout abyss-core
       uses: actions/checkout@v4
       with:
         repository: nuln/abyss-core
         path: core
-        token: ${{ steps.token.outputs.token }}
+        token: ${{ steps.auth.outputs.token }}
 
     - name: Configure Git for private modules
       shell: bash
-      run: git config --global url."https://x-access-token:${{ steps.token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+      run: git config --global url."https://x-access-token:${{ steps.auth.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
     - name: Set up Go
       uses: actions/setup-go@v5
