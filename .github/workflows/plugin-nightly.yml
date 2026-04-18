@@ -1,0 +1,84 @@
+# Reusable Nightly Integration Test workflow for all abyss plugin repositories.
+# Caller: uses: nuln/.github/.github/workflows/plugin-nightly.yml@main
+#         secrets: inherit
+#
+# Runs: make test-integration (go test -v ./...) — includes network/integration tests.
+# Trigger: called from each plugin's nightly.yml (weekly schedule + workflow_dispatch).
+# Unlike regular CI which uses -short, this runs the full test suite.
+name: Plugin Nightly Integration Tests
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go toolchain version'
+        required: false
+        type: string
+        default: '1.26'
+
+jobs:
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token
+        id: token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.ABYSS_ACCESS_APP_ID }}
+          private-key: ${{ secrets.ABYSS_ACCESS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.token.outputs.token }}
+
+      - name: Checkout abyss-core
+        uses: actions/checkout@v4
+        with:
+          repository: nuln/abyss-core
+          path: core
+          token: ${{ steps.token.outputs.token }}
+
+      - name: Configure Git for private modules
+        run: git config --global url."https://x-access-token:${{ steps.token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Create frontend dist placeholder
+        run: mkdir -p www/dist && touch www/dist/.gitkeep
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: false
+
+      - name: Restore Go module cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-${{ inputs.go-version }}-
+
+      - name: Download Go dependencies
+        env:
+          GOPRIVATE: github.com/nuln/*
+          GONOSUMDB: github.com/nuln/*
+          GOWORK: auto
+        run: |
+          rm -f go.sum
+          go mod download
+          go mod tidy
+
+      - name: Run integration tests
+        run: make test-integration
+        env:
+          GOWORK: auto
+        # Integration tests may call external URLs; timeout is generous (30 min)
+        timeout-minutes: 30
+
+      - name: Evict nuln modules from Go module cache
+        if: always()
+        run: rm -rf "$HOME/go/pkg/mod/github.com/nuln"
