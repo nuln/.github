@@ -62,6 +62,12 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
+    - name: Create frontend dist placeholder
+      shell: bash
+      run: |
+        mkdir -p www/dist
+        echo "placeholder" > www/dist/.placeholder.txt
+
     - name: Download Go dependencies
       shell: bash
       run: |
