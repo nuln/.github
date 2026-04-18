@@ -1,0 +1,74 @@
+name: Abyss Plugin Dependency Scan
+description: Run vulnerability checks for abyss plugins
+
+inputs:
+  go-version:
+    description: Go toolchain version
+    required: false
+    default: "1.26"
+  app-id:
+    description: GitHub App ID for private dependency access
+    required: true
+  app-private-key:
+    description: GitHub App private key for private dependency access
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate token
+      id: token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-private-key }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Checkout plugin
+      uses: actions/checkout@v4
+      with:
+        token: ${{ steps.token.outputs.token }}
+
+    - name: Checkout abyss-core
+      uses: actions/checkout@v4
+      with:
+        repository: nuln/abyss-core
+        path: core
+        token: ${{ steps.token.outputs.token }}
+
+    - name: Configure Git for private modules
+      shell: bash
+      run: git config --global url."https://x-access-token:${{ steps.token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Restore Go module cache
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-mod-${{ inputs.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-mod-${{ inputs.go-version }}-
+
+    - name: Download Go dependencies
+      shell: bash
+      env:
+        GOPRIVATE: github.com/nuln/*
+        GONOSUMDB: github.com/nuln/*
+      run: go mod tidy
+
+    - name: Run vulnerability check
+      shell: bash
+      env:
+        GOPRIVATE: github.com/nuln/*
+        GONOSUMDB: github.com/nuln/*
+      run: make vulnerability-check
+
+    - name: Evict nuln modules from Go module cache
+      if: always()
+      shell: bash
+      run: rm -rf "$HOME/go/pkg/mod/github.com/nuln"
