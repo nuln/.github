@@ -1,0 +1,95 @@
+name: Abyss Plugin Assets Release
+description: Build and publish plugin release assets
+
+inputs:
+  app-id:
+    description: GitHub App ID for private dependency access
+    required: true
+  app-private-key:
+    description: GitHub App private key for private dependency access
+    required: true
+  plugin-dir:
+    description: Relative plugin directory inside caller repository
+    required: false
+    default: .
+  core-repo:
+    description: Abyss core repository to checkout
+    required: false
+    default: nuln/abyss-core
+  go-version:
+    description: Go toolchain version
+    required: false
+    default: "1.25.3"
+  node-version:
+    description: Node.js version
+    required: false
+    default: "24"
+  pnpm-version:
+    description: pnpm version
+    required: false
+    default: "10"
+  release-tag:
+    description: Tag name used for release assets
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Generate token
+      id: token
+      uses: actions/create-github-app-token@v2
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-private-key }}
+        owner: ${{ github.repository_owner }}
+
+    - name: Checkout core
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.core-repo }}
+        path: core
+        token: ${{ steps.token.outputs.token }}
+
+    - name: Checkout plugin
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ steps.token.outputs.token }}
+
+    - name: Configure Git for private modules
+      shell: bash
+      run: |
+        git config --global url."https://x-access-token:${{ steps.token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: true
+        cache-dependency-path: ${{ inputs.plugin-dir }}/go.mod
+
+    - name: Refresh internal module cache
+      shell: bash
+      working-directory: ${{ inputs.plugin-dir }}
+      run: make clean-internal-cache
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: ${{ inputs.pnpm-version }}
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+        cache-dependency-path: core/www/pnpm-lock.yaml
+
+    - name: Release assets
+      shell: bash
+      working-directory: ${{ inputs.plugin-dir }}
+      env:
+        GOPRIVATE: github.com/nuln/*
+      run: |
+        go mod edit -replace github.com/nuln/abyss-core=../../core
+        make assets TAG=${{ inputs.release-tag }}
