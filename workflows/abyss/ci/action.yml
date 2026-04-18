@@ -12,6 +12,10 @@ inputs:
   app-private-key:
     description: GitHub App private key for private dependency access
     required: true
+  test-command:
+    description: Command used to run tests
+    required: false
+    default: "make test"
 
 runs:
   using: composite
@@ -102,7 +106,7 @@ runs:
       shell: bash
       env:
         GOWORK: auto
-      run: make test
+      run: ${{ inputs.test-command }}
 
     - name: Evict nuln modules from Go module cache
       if: always()
