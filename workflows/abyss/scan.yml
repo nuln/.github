@@ -1,5 +1,5 @@
 # Reusable Dependency Scan workflow for all abyss plugin repositories.
-# Caller: uses: nuln/.github/.github/workflows/plugin-scan.yml@main
+# Caller: uses: nuln/.github/workflows/abyss/scan.yml@master
 #         secrets: inherit
 #
 # Runs: govulncheck on the full module graph.

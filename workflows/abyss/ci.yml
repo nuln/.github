@@ -1,5 +1,5 @@
 # Reusable CI workflow for all abyss plugin repositories.
-# Caller: uses: nuln/.github/.github/workflows/plugin-ci.yml@main
+# Caller: uses: nuln/.github/workflows/abyss/ci.yml@master
 #         secrets: inherit
 #
 # Jobs run in parallel:

@@ -1,5 +1,5 @@
 # Reusable Nightly Integration Test workflow for all abyss plugin repositories.
-# Caller: uses: nuln/.github/.github/workflows/plugin-nightly.yml@main
+# Caller: uses: nuln/.github/workflows/abyss/nightly.yml@master
 #         secrets: inherit
 #
 # Runs: make test-integration (go test -v ./...) — includes network/integration tests.
