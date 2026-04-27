@@ -96,4 +96,4 @@ runs:
     - name: Evict nuln modules from Go module cache
       if: always()
       shell: bash
-      run: rm -rf "$HOME/go/pkg/mod/github.com/nuln"
+      run: chmod -R u+w "$HOME/go/pkg/mod/github.com/nuln" 2>/dev/null || true && rm -rf "$HOME/go/pkg/mod/github.com/nuln"
