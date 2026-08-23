@@ -17,7 +17,7 @@ inputs:
   core-repo:
     description: Abyss core repository to checkout
     required: false
-    default: nuln/abyss-core
+    default: nuln/abyss
   go-version:
     description: Go toolchain version
     required: false
@@ -37,7 +37,7 @@ inputs:
     description: Repository token used for tag push (typically secrets.GITHUB_TOKEN)
     required: true
   core-replace-path:
-    description: Replace path for github.com/nuln/abyss-core in go.mod
+    description: Replace path for github.com/nuln/abyss in go.mod
     required: false
     default: ./core
   make-core-dir:
@@ -124,5 +124,5 @@ runs:
       env:
         GOPRIVATE: github.com/nuln/*
       run: |
-        go mod edit -replace github.com/nuln/abyss-core=${{ inputs.core-replace-path }}
+        go mod edit -replace github.com/nuln/abyss=${{ inputs.core-replace-path }}
         make assets TAG=${{ inputs.release-tag }} CORE_DIR=${{ inputs.make-core-dir }} PLUGIN_PATH=${{ inputs.make-plugin-path }}
