@@ -47,10 +47,10 @@ runs:
         fetch-depth: 0
         token: ${{ steps.auth.outputs.token }}
 
-    - name: Checkout abyss-core
+    - name: Checkout abyss
       uses: actions/checkout@v4
       with:
-        repository: nuln/abyss-core
+        repository: nuln/abyss
         path: core
         token: ${{ steps.auth.outputs.token }}
 
